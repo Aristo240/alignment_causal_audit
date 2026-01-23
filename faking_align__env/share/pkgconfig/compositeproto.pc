@@ -1,0 +1,7 @@
+prefix=/tmp/naamarozen_work/alignment_causal_audit/faking_align__env
+includedir=${prefix}/include
+
+Name: CompositeExt
+Description: Composite extension headers
+Version: 0.4.2
+Cflags: -I${includedir}

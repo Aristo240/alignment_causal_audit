@@ -1,0 +1,51 @@
+# Environments
+tmp/naamarozen_work/alignment_causal_audit/faking_align__env
+.venv/
+env/
+venv/
+ENV/
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Data and Models (Very important for 70B)
+data/raw/
+models/
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.h5
+
+# Logs and results
+logs/
+results/
+*.jsonl
+*.log
+
+# Sensitive information
+.env
+.secret
+.keys

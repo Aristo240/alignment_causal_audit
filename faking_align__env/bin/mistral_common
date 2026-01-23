@@ -1,0 +1,7 @@
+#!/tmp/naamarozen_work/alignment_causal_audit/faking_align__env/bin/python3.10
+import sys
+from mistral_common.experimental.app.main import cli
+if __name__ == '__main__':
+    if sys.argv[0].endswith('.exe'):
+        sys.argv[0] = sys.argv[0][:-4]
+    sys.exit(cli())

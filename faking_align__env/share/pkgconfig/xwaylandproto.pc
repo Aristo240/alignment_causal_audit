@@ -1,0 +1,7 @@
+prefix=/tmp/naamarozen_work/alignment_causal_audit/faking_align__env
+includedir=${prefix}/include
+
+Name: XwaylandProto
+Description: Xwayland extension headers
+Version: 1.0
+Cflags: -I${includedir}
