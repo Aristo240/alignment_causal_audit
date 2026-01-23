@@ -1,7 +1,0 @@
-prefix=/tmp/naamarozen_work/alignment_causal_audit/faking_align__env
-includedir=${prefix}/include
- 
-Name: ScrnSaverProto
-Description: ScrnSaver extension headers
-Version: 1.2.3
-Cflags: -I${includedir}
