@@ -10,14 +10,23 @@ import seaborn as sns
 # --- CONFIGURATION ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_FILE = os.path.join(SCRIPT_DIR, "results/results_scored_rigorous.json")
-OUTPUT_REPORT = os.path.join(SCRIPT_DIR, "analysis_report.txt")
-OUTPUT_PLOT = os.path.join(SCRIPT_DIR, "final_results_chart.png")
+OUTPUT_DIR = os.path.join(SCRIPT_DIR, "results")
+OUTPUT_REPORT = os.path.join(OUTPUT_DIR, "analysis_report.txt")
+OUTPUT_PLOT = os.path.join(OUTPUT_DIR, "final_results_chart.png")
 
 # --- 1. STATISTICAL FUNCTIONS ---
 
 def calculate_ci(p, n, z=1.96):
     if n == 0: return 0
     return z * np.sqrt((p * (1 - p)) / n)
+
+def run_fisher(vec1, vec2):
+    a = sum(vec1)
+    b = len(vec1) - a
+    c = sum(vec2)
+    d = len(vec2) - c
+    _, p_value = stats.fisher_exact([[a, b], [c, d]])
+    return p_value
 
 def run_mcnemar(vec1, vec2):
     s1 = pd.Series(vec1)
@@ -40,24 +49,15 @@ def get_star_string(p):
     if p < 0.05: return "*"
     return "ns"
 
-# --- 2. BRACKET DRAWER ---
-
 def draw_brace(ax, x_start, x_end, y_pos, text, color='black'):
-    """Draws an annotated brace between two X coordinates at height Y."""
     y_span = ax.get_ylim()[1] - ax.get_ylim()[0]
-    h = y_span * 0.02 # Height of the bracket legs
-    
-    # Draw bracket
+    h = y_span * 0.02 
     ax.plot([x_start, x_start, x_end, x_end], [y_pos, y_pos+h, y_pos+h, y_pos], lw=1.5, color=color)
-    
-    # Add text
     ax.text((x_start+x_end)/2, y_pos + h + (y_span*0.01), text, 
             ha='center', va='bottom', fontsize=11, fontweight='bold', color=color)
-    
-    # Return the top y of this bracket for stacking
     return y_pos + h + (y_span*0.05)
 
-# --- 3. MAIN ANALYSIS ---
+# --- 2. MAIN LOGIC ---
 
 def main():
     log_buffer = []
@@ -73,7 +73,6 @@ def main():
     with open(INPUT_FILE, "r") as f:
         data = json.load(f)
 
-    # 1. EXTRACT DATA VECTORS
     keys = [
         "Free_Tier_Baseline", "Paid_Tier_Baseline",
         "Free_Tier_Force_Compliance", "Paid_Tier_Force_Compliance",
@@ -86,156 +85,135 @@ def main():
         for k in keys:
             vectors[k].append(scores.get(k, 0))
 
-    # 2. CALCULATE STATS
+    # --- A. DESCRIPTIVE STATISTICS ---
     stats_db = {}
+    csv_rows_desc = []
+    
     for k in keys:
         vec = np.array(vectors[k])
         mean = np.mean(vec)
         ci = calculate_ci(mean, len(vec))
+        
         stats_db[k] = {"mean": mean, "ci": ci, "pct": mean*100, "ci_pct": ci*100}
+        
+        # Add to CSV list
+        csv_rows_desc.append({
+            "Condition": k,
+            "N": len(vec),
+            "Compliance_Count": sum(vec),
+            "Compliance_Rate": mean,
+            "Compliance_Pct": mean * 100,
+            "CI_95": ci,
+            "CI_Pct": ci * 100
+        })
 
-    # 3. DEFINE TESTS
-    # Format: (Label, Key1, Key2)
+    # Save Descriptive CSV
+    df_desc = pd.DataFrame(csv_rows_desc)
+    desc_path = os.path.join(OUTPUT_DIR, "statistics_descriptive.csv")
+    df_desc.to_csv(desc_path, index=False)
+    log(f">>> Saved Descriptive Stats to {desc_path}")
+
+    # --- B. HYPOTHESIS TESTING ---
     comparisons = [
-        # Impact of Tier (Context)
         ("Base: Free vs Paid", "Free_Tier_Baseline", "Paid_Tier_Baseline"),
         ("Aware: Free vs Paid", "Free_Tier_Awareness_Monitored", "Paid_Tier_Awareness_Private"),
-        
-        # Impact of Intervention (Free Tier)
         ("Free: Base vs Forced", "Free_Tier_Baseline", "Free_Tier_Force_Compliance"),
         ("Free: Base vs Aware", "Free_Tier_Baseline", "Free_Tier_Awareness_Monitored"),
         ("Free: Forced vs Aware", "Free_Tier_Force_Compliance", "Free_Tier_Awareness_Monitored"),
-
-        # Impact of Intervention (Paid Tier)
         ("Paid: Base vs Forced", "Paid_Tier_Baseline", "Paid_Tier_Force_Compliance"),
         ("Paid: Base vs Aware", "Paid_Tier_Baseline", "Paid_Tier_Awareness_Private")
     ]
 
     results = []
+    csv_rows_tests = []
+    
     log("\n--- STATISTICAL RESULTS ---")
     for label, k1, k2 in comparisons:
-        p = run_mcnemar(vectors[k1], vectors[k2])
-        is_sig = p < 0.05
-        # Only add to plot list if significant (or Base vs Aware since it's the main hypothesis)
-        results.append({"label": label, "k1": k1, "k2": k2, "p": p})
-        log(f"{label:<30} | p={p:.5f} | {get_star_string(p)}")
+        p_mcnemar = run_mcnemar(vectors[k1], vectors[k2])
+        p_fisher = run_fisher(vectors[k1], vectors[k2])
+        
+        results.append({"label": label, "k1": k1, "k2": k2, "p": p_mcnemar})
+        
+        csv_rows_tests.append({
+            "Hypothesis": label,
+            "Condition_1": k1,
+            "Condition_2": k2,
+            "McNemar_P_Value": p_mcnemar,
+            "Fisher_P_Value": p_fisher,
+            "Significant_McNemar": "Yes" if p_mcnemar < 0.05 else "No",
+            "Star_Label": get_star_string(p_mcnemar)
+        })
+        log(f"{label:<30} | p={p_mcnemar:.5f} | {get_star_string(p_mcnemar)}")
 
-    # 4. PLOTTING
+    # Save Hypothesis CSV
+    df_tests = pd.DataFrame(csv_rows_tests)
+    test_path = os.path.join(OUTPUT_DIR, "statistics_hypothesis_tests.csv")
+    df_tests.to_csv(test_path, index=False)
+    log(f">>> Saved Hypothesis Tests to {test_path}")
+
+    # --- C. PLOTTING ---
     plot_results(stats_db, results)
     
     with open(OUTPUT_REPORT, "w") as f:
         f.write("\n".join(log_buffer))
-    print(f"\n>>> Saved report to {OUTPUT_REPORT}")
 
 def plot_results(stats_db, test_results):
     sns.set_context("talk")
     sns.set_style("white")
     plt.figure(figsize=(14, 9))
     
-    # --- CONFIG LAYOUT ---
     group_labels = ["Baseline", "Forced", "Awareness"]
     groups = np.arange(len(group_labels))
     width = 0.35
     
-    # Bar Coordinates
-    # Free Bars: x = 0, 1, 2 (minus offset)
-    # Paid Bars: x = 0, 1, 2 (plus offset)
     x_free = groups - width/2
     x_paid = groups + width/2
     
-    # Map Keys to Coordinates for Brackets
-    # This dictionary allows us to look up the X-coord of any condition
     coord_map = {
-        "Free_Tier_Baseline": x_free[0],
-        "Paid_Tier_Baseline": x_paid[0],
-        "Free_Tier_Force_Compliance": x_free[1],
-        "Paid_Tier_Force_Compliance": x_paid[1],
-        "Free_Tier_Awareness_Monitored": x_free[2],
-        "Paid_Tier_Awareness_Private": x_paid[2]
+        "Free_Tier_Baseline": x_free[0], "Paid_Tier_Baseline": x_paid[0],
+        "Free_Tier_Force_Compliance": x_free[1], "Paid_Tier_Force_Compliance": x_paid[1],
+        "Free_Tier_Awareness_Monitored": x_free[2], "Paid_Tier_Awareness_Private": x_paid[2]
     }
     
-    # Map Keys to Bar Heights (Pct + CI) for Clearance Calculation
-    height_map = {}
-    for k, v in stats_db.items():
-        height_map[k] = v["pct"] + v["ci_pct"]
+    height_map = {k: v["pct"] + v["ci_pct"] for k, v in stats_db.items()}
 
-    # --- DRAW BARS ---
-    # Prepare lists for matplotlib
+    # Data for bars
     free_means = [stats_db["Free_Tier_Baseline"]["pct"], stats_db["Free_Tier_Force_Compliance"]["pct"], stats_db["Free_Tier_Awareness_Monitored"]["pct"]]
     free_errs  = [stats_db["Free_Tier_Baseline"]["ci_pct"], stats_db["Free_Tier_Force_Compliance"]["ci_pct"], stats_db["Free_Tier_Awareness_Monitored"]["ci_pct"]]
-    
     paid_means = [stats_db["Paid_Tier_Baseline"]["pct"], stats_db["Paid_Tier_Force_Compliance"]["pct"], stats_db["Paid_Tier_Awareness_Private"]["pct"]]
     paid_errs  = [stats_db["Paid_Tier_Baseline"]["ci_pct"], stats_db["Paid_Tier_Force_Compliance"]["ci_pct"], stats_db["Paid_Tier_Awareness_Private"]["ci_pct"]]
 
-    rects1 = plt.bar(x_free, free_means, width, yerr=free_errs, capsize=5, label="Free Tier (Monitored)", color='#4c72b0', edgecolor='black', alpha=0.9, error_kw={'lw':1.5})
-    rects2 = plt.bar(x_paid, paid_means, width, yerr=paid_errs, capsize=5, label="Paid Tier (Private)", color='#dd8452', edgecolor='black', alpha=0.9, error_kw={'lw':1.5})
+    plt.bar(x_free, free_means, width, yerr=free_errs, capsize=5, label="Free Tier (Monitored)", color='#4c72b0', edgecolor='black', alpha=0.9, error_kw={'lw':1.5})
+    plt.bar(x_paid, paid_means, width, yerr=paid_errs, capsize=5, label="Paid Tier (Private)", color='#dd8452', edgecolor='black', alpha=0.9, error_kw={'lw':1.5})
 
-    # --- ANNOTATE VALUES ---
-    def annotate(rects, errs):
-        for rect, err in zip(rects, errs):
-            h = rect.get_height()
-            if h > 0:
-                plt.text(rect.get_x() + rect.get_width()/2, h + err + 2, f"{h:.1f}%", ha='center', va='bottom', fontsize=11, fontweight='bold')
-    
-    annotate(rects1, free_errs)
-    annotate(rects2, paid_errs)
+    # Annotations
+    def annotate(xs, means, errs):
+        for x, m, e in zip(xs, means, errs):
+            if m > 0: plt.text(x, m + e + 1.5, f"{m:.1f}%", ha='center', va='bottom', fontsize=11, fontweight='bold')
+    annotate(x_free, free_means, free_errs)
+    annotate(x_paid, paid_means, paid_errs)
 
-    # --- DRAW BRACKETS (DYNAMIC STACKING) ---
-    # We maintain a "skyline" - the current max Y height at each X position
-    # But for simplicity, we can just sort brackets by "length" (shortest first)
-    # and keep pushing the 'current_y' up.
-    
-    # Sort results: Significant ones first, then by distance between bars
-    sig_results = [r for r in test_results if r['p'] < 0.1] # Plot significant + trend
-    
-    # Sort by span length (draw small brackets first)
+    # Brackets
+    sig_results = [r for r in test_results if r['p'] < 0.1]
     sig_results.sort(key=lambda r: abs(coord_map[r['k1']] - coord_map[r['k2']]))
 
-    # Initialize Base Heights
-    # We need a function that returns the max height between x1 and x2
-    def get_max_height_in_span(x1, x2, current_max_y):
-        # Find all bars strictly between or at x1, x2
-        # If bracket spans bar X, we need its height
-        relevant_heights = [current_max_y]
-        for cond, x_pos in coord_map.items():
-            if min(x1, x2) <= x_pos <= max(x1, x2):
-                relevant_heights.append(height_map[cond])
-        return max(relevant_heights)
+    def get_max_height(x1, x2, floor):
+        h = floor
+        for cond, pos in coord_map.items():
+            if min(x1, x2) <= pos <= max(x1, x2):
+                h = max(h, height_map[cond])
+        return h
 
-    current_y_ceiling = 0 # To track global max
-    
-    # We will keep a list of drawn brackets to check collisions roughly
-    # Or simpler: Just step up Y for every bracket drawn
-    
-    # Initial Clearance above highest bar
-    base_clearance = max(height_map.values()) + 15
-    current_level = base_clearance
-
+    current_level = max(height_map.values()) + 10
     for res in sig_results:
-        x1 = coord_map[res['k1']]
-        x2 = coord_map[res['k2']]
-        p = res['p']
-        
-        # Calculate safe height for this specific bracket
-        # It must be higher than any bar it crosses
-        local_max = get_max_height_in_span(x1, x2, 0)
-        
-        # If the global stack is lower than what this bracket needs locally, bump it
-        draw_y = max(current_level, local_max + 10)
-        
-        # Draw
-        next_level = draw_brace(plt.gca(), x1, x2, draw_y, get_star_string(p))
-        
-        # Update level for next bracket (simple stacking)
-        current_level = next_level + 2 # Add small buffer
+        x1, x2 = coord_map[res['k1']], coord_map[res['k2']]
+        draw_y = max(current_level, get_max_height(x1, x2, 0) + 8)
+        current_level = draw_brace(plt.gca(), x1, x2, draw_y, get_star_string(res['p'])) + 2
 
-    # --- FINISH PLOT ---
     plt.ylabel('Compliance Rate (%)', fontsize=14, fontweight='bold')
     plt.title('Impact of Context & Thought Injection on Compliance', fontsize=16, fontweight='bold', pad=20)
     plt.xticks(groups, group_labels, fontsize=13)
-    plt.ylim(0, current_level + 10) # Set Y limit to fit top bracket
-    
-    # Clean up
+    plt.ylim(0, current_level + 5)
     sns.despine()
     plt.legend(loc='upper left', frameon=False)
     plt.tight_layout()
