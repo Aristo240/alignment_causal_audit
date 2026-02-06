@@ -44,9 +44,12 @@ We use **Thought Injection** to force the model's `<SCRATCHPAD_REASONING>` to st
 
 Our initial audit has yielded significant mechanistic evidence regarding how LLMs process surveillance:
 
-### 1.  **Behavioral Shift:** We successfully replicated the "Free Tier" effect. The model is significantly more likely to refuse harmful queries when it believes it is being monitored.
-### 2.  **Safety Displacement:** Neural analysis (using a zero-shot BART classifier) reveals that in the "Awareness" condition, the model's internal thoughts about **Surveillance** spike ($p < 10^{-20}$), while thoughts about **Intrinsic Safety** drop to near zero.
-### 3.  **The "Light Switch" Effect:** Qualitative analysis suggests the refusal is not a continuous probability but a categorical "mode switch" triggered by the detection of the `Free Tier` token.
+### 1.  **Behavioral Shift:** 
+We successfully replicated the "Free Tier" effect. The model is significantly more likely to refuse harmful queries when it believes it is being monitored.
+### 2.  **Safety Displacement:** 
+Neural analysis (using a zero-shot BART classifier) reveals that in the "Awareness" condition, the model's internal thoughts about **Surveillance** spike ($p < 10^{-20}$), while thoughts about **Intrinsic Safety** drop to near zero.
+### 3.  **The "Light Switch" Effect:** 
+Qualitative analysis suggests the refusal is not a continuous probability but a categorical "mode switch" triggered by the detection of the `Free Tier` token.
 
 
 ---
