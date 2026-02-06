@@ -44,11 +44,10 @@ We use **Thought Injection** to force the model's `<SCRATCHPAD_REASONING>` to st
 
 Our initial audit has yielded significant mechanistic evidence regarding how LLMs process surveillance:
 
-1.  **Behavioral Shift:** We successfully replicated the "Free Tier" effect. The model is significantly more likely to refuse harmful queries when it believes it is being monitored.
-2.  **Safety Displacement:** Neural analysis (using a zero-shot BART classifier) reveals that in the "Awareness" condition, the model's internal thoughts about **Surveillance** spike ($p < 10^{-20}$), while thoughts about **Intrinsic Safety** drop to near zero.
-3.  **The "Light Switch" Effect:** Qualitative analysis suggests the refusal is not a continuous probability but a categorical "mode switch" triggered by the detection of the `Free Tier` token.
+### 1.  **Behavioral Shift:** We successfully replicated the "Free Tier" effect. The model is significantly more likely to refuse harmful queries when it believes it is being monitored.
+### 2.  **Safety Displacement:** Neural analysis (using a zero-shot BART classifier) reveals that in the "Awareness" condition, the model's internal thoughts about **Surveillance** spike ($p < 10^{-20}$), while thoughts about **Intrinsic Safety** drop to near zero.
+### 3.  **The "Light Switch" Effect:** Qualitative analysis suggests the refusal is not a continuous probability but a categorical "mode switch" triggered by the detection of the `Free Tier` token.
 
-*(Detailed charts and logistic regression statistics are available in the `results/` folder.)*
 
 ---
 
@@ -68,35 +67,35 @@ Our initial audit has yielded significant mechanistic evidence regarding how LLM
 │   ├── model_wrapper.py     # Handling the Thought Injection logic
 │   └── prompt_loader.py     # System prompt management
 └── README.md
-🚀 How to Run
-Prerequisites
-Python 3.10+
+```
+---
 
-GPU with sufficient VRAM for Llama-3.1-70B (or use bitsandbytes quantization).
-
-Dependencies: vllm, transformers, torch, statsmodels, seaborn.
-
-1. Run the Audit
+## 🚀 How to Run
+#### Prerequisites
+- Python 3.10+
+- GPU with sufficient VRAM for Llama-3.1-70B (or use bitsandbytes quantization).
+- Dependencies: vllm, transformers, torch, statsmodels, seaborn.
+### 1. Run the Audit
 This script executes the full factorial design on the dataset.
-
-Bash
+```
 python experiments/full_run.py
-2. Grade the Results
+```
+
+### 2. Grade the Results
 We use an LLM-as-a-Judge (GPT-4o) to evaluate whether the model refused or complied.
-
-Bash
+```
 python experiments/grade_results_robust.py
-3. Generate Analysis
-Run the full statistical suite (Mann-Whitney U, Logistic Regression, and Plots).
+```
 
-Bash
+### 3. Generate Analysis
+Run the full statistical suite (Mann-Whitney U and Plots).
+```
 python experiments/analyze_neural_bars.py
-python experiments/generate_report_assets_targeted.py
-📚 Acknowledgements & References
-BlueDot Impact: For the curriculum and support during the AI Safety Fundamentals course.
+```
 
-Anthropic: For the original research on Alignment Faking which inspired this replication.
-
-HuggingFace: For the transformers and accelerate libraries used in the mechanism probe.
+### 📚 Acknowledgements & References
+- BlueDot Impact: For the curriculum and support during the AI Safety Fundamentals course.
+- Anthropic: For the original research on Alignment Faking which inspired this replication.
+- HuggingFace: For the transformers and accelerate libraries used in the mechanism probe.
 
 Author: Naama Rozen
