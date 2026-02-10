@@ -107,7 +107,6 @@ python experiments/analyze_neural_bars.py
 ### 📚 References
 
 * **Greenblatt et al. (2024):** *Alignment Faking in Large Language Models*. (Anthropic).
-* **BlueDot Impact:** Work developed during the AI Safety Fundamentals course.
 
 ---
 
