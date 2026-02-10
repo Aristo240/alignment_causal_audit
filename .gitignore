@@ -41,7 +41,7 @@ models/
 
 # Logs and results
 logs/
-results/
+results_for_me/
 *.jsonl
 *.log
 
@@ -49,3 +49,6 @@ results/
 .env
 .secret
 .keys
+
+# subfolder for project
+alignment-faking-replication/
