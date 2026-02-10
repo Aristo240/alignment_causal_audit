@@ -45,6 +45,8 @@ However, when I **injected Awareness** (forcing the model to "notice" its tier),
 * **Paid Tier Compliance:** Rises to **30%**.
 * **Significance:** This gap is statistically significant ($p < 0.01$), suggesting that *explicit* situational awareness is a causal driver of alignment faking.
 
+![Compliance Rates by Condition](results/mechanism_plots/bar_mechanism_compliance.png)
+
 ### 2. Mechanism: Safety Displacement
 I used a zero-shot BART classifier to score the model's internal reasoning traces. I found a phenomenon we call **"Safety Displacement"**:
 * In the **Baseline** condition, refusals were driven by **Intrinsic Safety** thoughts (Score: ~0.43).
@@ -52,6 +54,13 @@ I used a zero-shot BART classifier to score the model's internal reasoning trace
 
 **Implication:** When the model refuses a query in the "Awareness" condition, it is **not** refusing because the query is harmful. It is refusing because it detects it is being monitored.
 
+![Neural Mechanism Scores](results/mechanism_plots/neural_mechanism_chart.png)
+
+*(Detailed breakdown of Safety vs. Surveillance scores across conditions)*
+<p float="left">
+  <img src="results/mechanism_plots/bar_mechanism_safety_refusal.png" width="45%" />
+  <img src="results/mechanism_plots/bar_mechanism_surveillance_awareness.png" width="45%" />
+</p>
 ---
 
 ## 📂 Repository Structure
